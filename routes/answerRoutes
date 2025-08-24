@@ -1,0 +1,18 @@
+const express = require('express');
+const {
+  submitAnswer,
+  getAnswerHistory,
+  submitManyAnswers
+} = require('../controllers/answerController');
+const { protect } = require('../middlewares/auth');
+
+const router = express.Router();
+
+router.route('/')
+  .post(protect, submitAnswer)
+  .get(protect, getAnswerHistory);
+
+router.route('/batch')
+  .post(protect, submitManyAnswers);
+
+module.exports = router;
