@@ -22,4 +22,5 @@ router.delete('/:id', protect, adminOnly, questionController.deleteQuestion);
 
 router.post('/select', protect, questionController.getQuestionsByChaptersAndLevels);
 router.post('/batch', protect, questionController.getQuestionsBatch);
+router.get('/chapter/:chapterId', protect, questionController.getQuestionsByChapter);
 module.exports = router;

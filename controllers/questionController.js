@@ -213,17 +213,22 @@ const getQuestionsByChaptersAndLevels = async (req, res, next) => {
     }
 
     let allQuestions = [];
+    let seenIds = new Set();
 
     for (const item of chapters) {
-      const { chapterId, level, count } = item;
-      if (!chapterId || !level || !count || count <= 0) continue;
+      const { chapterId, level, type, count } = item;
+      if (!chapterId || !level || !type || !count || count <= 0) continue;
 
-      let query = { chapterId: chapterId, level: level };
+      let query = { chapterId: chapterId, level: level, type: type };
       if (subject) query.subjectId = subject;
-      if (type) query.type = type;
 
       const questions = await Question.find(query).limit(count);
-      allQuestions = allQuestions.concat(questions);
+      for (const q of questions) {
+        if (!seenIds.has(q._id.toString())) {
+          allQuestions.push(q);
+          seenIds.add(q._id.toString());
+        }
+      }
     }
 
     res.status(200).json({
@@ -277,6 +282,22 @@ const getQuestionsBatch = async (req, res, next) => {
   }
 };
 
+// @desc    Get all questions for a chapter
+// @route   GET /api/questions/chapter/:chapterId
+// @access  Private
+const getQuestionsByChapter = async (req, res, next) => {
+  try {
+    const { chapterId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(chapterId)) {
+      return res.status(400).json({ success: false, error: 'Invalid chapter ID format' });
+    }
+    const questions = await Question.find({ chapterId });
+    res.status(200).json({ success: true, count: questions.length, data: questions });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getQuestions,
   getQuestion,
@@ -284,4 +305,5 @@ module.exports = {
   deleteQuestion,
   getQuestionsByChaptersAndLevels,
   getQuestionsBatch,
+  getQuestionsByChapter
 };
