@@ -207,9 +207,18 @@ const deleteQuestion = async (req, res) => {
 // @access  Private
 const getQuestionsByChaptersAndLevels = async (req, res, next) => {
   try {
-    const { chapters, subject, type } = req.body; // subject = subjectId, type = question type (e.g. true_false)
+    let { chapters, subject, type } = req.body;
+    // If chapters array is not sent or is empty, fetch all chapters
     if (!Array.isArray(chapters) || chapters.length === 0) {
-      return res.status(400).json({ success: false, error: 'Chapters array is required' });
+      // Fetch all chapters from the database
+      const allChapters = await Chapter.find(subject ? { subjectId: subject } : {});
+      // Prepare chapters array automatically
+      chapters = allChapters.map(chap => ({
+        chapterId: chap._id,
+        level: req.body.level || 'easy', // You can customize level from request or use default
+        type: type || 'mcq', // You can customize type from request or use default
+        count: req.body.count || 1 // You can customize count from request or use default
+      }));
     }
 
     let allQuestions = [];
