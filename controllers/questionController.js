@@ -215,27 +215,49 @@ const getQuestionsByChaptersAndLevels = async (req, res, next) => {
       // Prepare chapters array automatically
       chapters = allChapters.map(chap => ({
         chapterId: chap._id,
-        level: req.body.level || 'easy', // You can customize level from request or use default
-        type: type || 'mcq', // You can customize type from request or use default
-        count: req.body.count || 1 // You can customize count from request or use default
+        level: req.body.level || 'easy', // Default or custom level
+        type: type || 'mcq', // Default or custom type
+        count: req.body.count || 1 // Default or custom count
       }));
     }
 
     let allQuestions = [];
     let seenIds = new Set();
+    const allAnswers = await StudentAnswer.find({ studentId: req.user.id });
 
     for (const item of chapters) {
-      const { chapterId, level, type, count } = item;
+      const { chapterId, level, type, count, status } = item;
       if (!chapterId || !level || !type || !count || count <= 0) continue;
 
       let query = { chapterId: chapterId, level: level, type: type };
       if (subject) query.subjectId = subject;
 
-      const questions = await Question.find(query).limit(count);
+      // Fetch more questions to allow for filtering
+      let questions = await Question.find(query).limit(count * 3);
+
+      // Filter by status if provided
+      if (status === 'wrong' || status === 'not answered') {
+        if (allAnswers.length > 0) {
+          if (status === 'wrong') {
+            const wrongAnswers = allAnswers.filter(answer => !answer.isCorrect && answer.chapterId && answer.chapterId.toString() === chapterId.toString());
+            const wrongQuestionIds = new Set(wrongAnswers.map(answer => answer.questionId.toString()));
+            questions = questions.filter(q => wrongQuestionIds.has(q._id.toString()));
+          } else if (status === 'not answered') {
+            const answeredQuestionIds = new Set(allAnswers.filter(a => a.chapterId && a.chapterId.toString() === chapterId.toString()).map(a => a.questionId.toString()));
+            questions = questions.filter(q => !answeredQuestionIds.has(q._id.toString()));
+          }
+        } else {
+          if (status === 'wrong') questions = [];
+        }
+      }
+
+      // Add filtered questions without duplicates
+      let added = 0;
       for (const q of questions) {
-        if (!seenIds.has(q._id.toString())) {
+        if (!seenIds.has(q._id.toString()) && added < count) {
           allQuestions.push(q);
           seenIds.add(q._id.toString());
+          added++;
         }
       }
     }
