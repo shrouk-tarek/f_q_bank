@@ -85,21 +85,21 @@ exports.login = async (req, res, next) => {
 
     // Validate email & password
     if (!email || !password) {
-      return next(new ErrorResponse('Please provide an email and password', 400));
+      return res.status(400).json({ success: false, error: 'Please provide an email and password' });
     }
 
     // Check for user by email
     const user = await User.findOne({ email }).select('+password');
 
     if (!user) {
-      return next(new ErrorResponse('Invalid email or password', 401));
+      return res.status(401).json({ success: false, error: 'Invalid email or password' });
     }
 
     // Check if password matches
     const isMatch = await user.matchPassword(password);
 
     if (!isMatch) {
-      return next(new ErrorResponse('Invalid email or password', 401));
+      return res.status(401).json({ success: false, error: 'Invalid email or password' });
     }
 
     // Create token
@@ -110,6 +110,6 @@ exports.login = async (req, res, next) => {
       token
     });
   } catch (err) {
-    next(new ErrorResponse('Error logging in', 500));
+    return res.status(500).json({ success: false, error: 'Error logging in' });
   }
 };
